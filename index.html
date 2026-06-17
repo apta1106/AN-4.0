@@ -1,0 +1,906 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AN Progress — Personal Life OS</title>
+
+  <!-- ===== PWA META TAGS ===== -->
+  <meta name="description" content="Personal Life Operating System untuk mengelola kehidupan, produktivitas, keuangan, dan target hidup." />
+  <meta name="theme-color" content="#3B82F6" id="meta-theme-color" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="AN Progress" />
+  <meta name="msapplication-TileColor" content="#3B82F6" />
+  <meta name="msapplication-TileImage" content="icons/icon-144.png" />
+
+  <!-- ===== MANIFEST ===== -->
+  <link rel="manifest" href="manifest.json" />
+
+  <!-- ===== ICONS ===== -->
+  <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png" />
+  <link rel="icon" type="image/png" sizes="512x512" href="icons/icon-512.png" />
+  <link rel="apple-touch-icon" href="icons/icon-192.png" />
+  <link rel="apple-touch-icon" sizes="152x152" href="icons/icon-152.png" />
+  <link rel="apple-touch-icon" sizes="144x144" href="icons/icon-144.png" />
+  <link rel="apple-touch-icon" sizes="128x128" href="icons/icon-128.png" />
+  <link rel="apple-touch-icon" sizes="96x96"  href="icons/icon-96.png" />
+  <link rel="apple-touch-icon" sizes="72x72"  href="icons/icon-72.png" />
+
+  <!-- ===== STYLESHEET ===== -->
+  <link rel="stylesheet" href="style.css" />
+
+  <!-- Chart.js untuk grafik -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <!-- Supabase JS Client (untuk Login Google + Cloud Sync) -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+</head>
+<body class="light-mode">
+
+  <!-- ===== OVERLAY LOADING ===== -->
+  <div id="loading-overlay">
+    <div class="loading-box">
+      <div class="loading-logo">AN</div>
+      <p>Memuat AN Progress...</p>
+    </div>
+  </div>
+
+  <!-- ===== SIDEBAR ===== -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <div class="brand-logo">AN</div>
+      <span class="brand-name">Progress</span>
+      <button class="sidebar-toggle-btn" id="sidebar-close-btn" title="Tutup Sidebar">&#10005;</button>
+    </div>
+
+    <nav class="sidebar-nav">
+      <a href="#" class="nav-item active" data-page="dashboard">
+        <span class="nav-icon">&#9632;</span>
+        <span class="nav-label">Dashboard</span>
+      </a>
+      <a href="#" class="nav-item" data-page="quest">
+        <span class="nav-icon">&#9670;</span>
+        <span class="nav-label">Quest</span>
+      </a>
+      <a href="#" class="nav-item" data-page="finance">
+        <span class="nav-icon">&#9650;</span>
+        <span class="nav-label">Keuangan</span>
+      </a>
+      <a href="#" class="nav-item" data-page="wishlist">
+        <span class="nav-icon">&#9733;</span>
+        <span class="nav-label">Wishlist</span>
+      </a>
+      <a href="#" class="nav-item" data-page="inventory">
+        <span class="nav-icon">&#9679;</span>
+        <span class="nav-label">Inventori</span>
+      </a>
+      <a href="#" class="nav-item" data-page="profil">
+        <span class="nav-icon">&#9651;</span>
+        <span class="nav-label">Profil</span>
+      </a>
+      <a href="#" class="nav-item" data-page="statistik">
+        <span class="nav-icon">&#9658;</span>
+        <span class="nav-label">Statistik</span>
+      </a>
+      <a href="#" class="nav-item" data-page="aktivitas">
+        <span class="nav-icon">&#9660;</span>
+        <span class="nav-label">Aktivitas</span>
+      </a>
+      <a href="#" class="nav-item" data-page="ai">
+        <span class="nav-icon">&#9830;</span>
+        <span class="nav-label">AI Asisten</span>
+      </a>
+      <a href="#" class="nav-item" data-page="pengaturan">
+        <span class="nav-icon">&#9881;</span>
+        <span class="nav-label">Pengaturan</span>
+      </a>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="sidebar-user-mini" id="sidebar-user-mini">
+        <div class="user-avatar-mini" id="sidebar-avatar">AN</div>
+        <div class="user-info-mini">
+          <span id="sidebar-name">Pengguna</span>
+          <span id="sidebar-level">Level 1</span>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ===== MAIN WRAPPER ===== -->
+  <div class="main-wrapper" id="main-wrapper">
+
+    <!-- TOP BAR -->
+    <header class="topbar">
+      <div class="topbar-left">
+        <button class="hamburger-btn" id="hamburger-btn" title="Buka Sidebar">
+          <span></span><span></span><span></span>
+        </button>
+        <h1 class="page-title" id="page-title">Dashboard</h1>
+      </div>
+      <div class="topbar-right">
+        <div class="search-container">
+          <input type="text" id="global-search" placeholder="Cari sesuatu..." class="global-search-input" />
+          <div id="search-results" class="search-results-dropdown hidden"></div>
+        </div>
+        <button class="theme-toggle-btn" id="theme-toggle-btn" title="Ganti Tema">
+          <span id="theme-icon">🌙</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- ===== HALAMAN: DASHBOARD ===== -->
+    <section class="page active" id="page-dashboard">
+      <div class="dashboard-grid">
+
+        <!-- Kartu Profil Ringkas -->
+        <div class="card card-profile-summary">
+          <div class="profile-summary-inner">
+            <div class="profile-avatar-lg" id="dash-avatar">AN</div>
+            <div class="profile-summary-info">
+              <h2 id="dash-name">Selamat datang!</h2>
+              <p id="dash-tagline">Atur hidupmu hari ini.</p>
+              <div class="level-badge-row">
+                <span class="level-badge" id="dash-level">Level 1</span>
+                <span class="exp-text" id="dash-exp">0 / 100 EXP</span>
+              </div>
+              <div class="exp-bar-outer">
+                <div class="exp-bar-inner" id="dash-exp-bar" style="width:0%"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Ringkasan Hari Ini -->
+        <div class="card card-today">
+          <div class="card-header-row">
+            <h3 class="card-title">Hari Ini</h3>
+            <span class="card-date" id="today-date"></span>
+          </div>
+          <div class="stat-grid-mini">
+            <div class="stat-mini-box">
+              <span class="stat-mini-val" id="today-quest-done">0</span>
+              <span class="stat-mini-label">Quest Selesai</span>
+            </div>
+            <div class="stat-mini-box">
+              <span class="stat-mini-val" id="today-quest-total">0</span>
+              <span class="stat-mini-label">Total Quest</span>
+            </div>
+            <div class="stat-mini-box">
+              <span class="stat-mini-val" id="today-exp-gained">0</span>
+              <span class="stat-mini-label">EXP Didapat</span>
+            </div>
+            <div class="stat-mini-box">
+              <span class="stat-mini-val" id="today-income">Rp0</span>
+              <span class="stat-mini-label">Pemasukan</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Ringkasan Mingguan -->
+        <div class="card card-weekly">
+          <h3 class="card-title">Minggu Ini</h3>
+          <div class="weekly-bars" id="weekly-bars">
+            <!-- diisi JS -->
+          </div>
+        </div>
+
+        <!-- Radar Chart -->
+        <div class="card card-radar">
+          <h3 class="card-title">Statistik Radar</h3>
+          <div class="radar-chart-container">
+            <canvas id="radar-chart"></canvas>
+          </div>
+        </div>
+
+        <!-- Kalender Produktivitas -->
+        <div class="card card-calendar">
+          <h3 class="card-title">Kalender Produktivitas</h3>
+          <div class="productivity-calendar" id="productivity-calendar">
+            <!-- diisi JS -->
+          </div>
+        </div>
+
+        <!-- Insight Otomatis -->
+        <div class="card card-insight">
+          <h3 class="card-title">Insight Otomatis</h3>
+          <ul class="insight-list" id="insight-list">
+            <li class="insight-item">Memuat insight...</li>
+          </ul>
+        </div>
+
+        <!-- Target Tabungan -->
+        <div class="card card-savings">
+          <div class="card-header-row">
+            <h3 class="card-title">Target Tabungan</h3>
+            <button class="btn-icon" id="btn-add-saving" title="Tambah Target">+</button>
+          </div>
+          <div id="savings-list" class="savings-list">
+            <p class="empty-state">Belum ada target tabungan.</p>
+          </div>
+        </div>
+
+        <!-- Target Hidup -->
+        <div class="card card-goals">
+          <div class="card-header-row">
+            <h3 class="card-title">Target Hidup</h3>
+            <button class="btn-icon" id="btn-add-goal" title="Tambah Target">+</button>
+          </div>
+          <div id="goals-list" class="goals-list">
+            <p class="empty-state">Belum ada target hidup.</p>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ===== HALAMAN: QUEST ===== -->
+    <section class="page" id="page-quest">
+      <div class="quest-tabs">
+        <button class="tab-btn active" data-tab="quest-hari-ini">Quest Hari Ini</button>
+        <button class="tab-btn" data-tab="quest-mingguan">Quest Mingguan</button>
+      </div>
+
+      <!-- Quest Hari Ini -->
+      <div class="tab-content active" id="quest-hari-ini">
+        <div class="content-header">
+          <h2 class="content-title" id="quest-today-label">Quest Hari Ini</h2>
+          <button class="btn-primary" id="btn-add-quest-today">+ Tambah Quest</button>
+        </div>
+        <div id="quest-today-list" class="quest-list">
+          <p class="empty-state">Belum ada quest hari ini. Tambahkan quest pertamamu!</p>
+        </div>
+      </div>
+
+      <!-- Quest Mingguan -->
+      <div class="tab-content" id="quest-mingguan">
+        <div class="content-header">
+          <h2 class="content-title">Quest Mingguan</h2>
+          <button class="btn-primary" id="btn-add-quest-weekly">+ Tambah Quest</button>
+        </div>
+        <div class="weekly-quest-grid" id="weekly-quest-grid">
+          <!-- 7 kolom hari diisi JS -->
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== HALAMAN: KEUANGAN ===== -->
+    <section class="page" id="page-finance">
+      <div class="finance-layout">
+
+        <!-- Panel Akun -->
+        <div class="finance-accounts-panel">
+          <div class="panel-header">
+            <h3>Akun Saya</h3>
+            <button class="btn-icon" id="btn-add-account" title="Tambah Akun">+</button>
+          </div>
+          <div id="accounts-list" class="accounts-list">
+            <p class="empty-state">Belum ada akun.</p>
+          </div>
+          <div class="total-balance-box">
+            <span class="total-label">Total Saldo</span>
+            <span class="total-val" id="total-balance">Rp 0</span>
+          </div>
+        </div>
+
+        <!-- Panel Transaksi -->
+        <div class="finance-transactions-panel">
+          <div class="panel-header">
+            <h3>Transaksi</h3>
+            <button class="btn-primary" id="btn-add-transaction">+ Tambah</button>
+          </div>
+
+          <div class="finance-filter-bar">
+            <select id="filter-type" class="filter-select">
+              <option value="">Semua Tipe</option>
+              <option value="pemasukan">Pemasukan</option>
+              <option value="pengeluaran">Pengeluaran</option>
+            </select>
+            <select id="filter-period" class="filter-select">
+              <option value="all">Semua Waktu</option>
+              <option value="today">Hari Ini</option>
+              <option value="week">Minggu Ini</option>
+              <option value="month">Bulan Ini</option>
+            </select>
+            <input type="text" id="search-transaction" class="filter-input" placeholder="Cari transaksi..." />
+          </div>
+
+          <div class="finance-summary-row">
+            <div class="summary-card income">
+              <span class="summary-label">Pemasukan</span>
+              <span class="summary-val" id="finance-income-total">Rp 0</span>
+            </div>
+            <div class="summary-card expense">
+              <span class="summary-label">Pengeluaran</span>
+              <span class="summary-val" id="finance-expense-total">Rp 0</span>
+            </div>
+            <div class="summary-card balance">
+              <span class="summary-label">Selisih</span>
+              <span class="summary-val" id="finance-balance-total">Rp 0</span>
+            </div>
+          </div>
+
+          <div id="transactions-list" class="transactions-list">
+            <p class="empty-state">Belum ada transaksi.</p>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ===== HALAMAN: WISHLIST ===== -->
+    <section class="page" id="page-wishlist">
+      <div class="content-header">
+        <h2 class="content-title">Wishlist</h2>
+        <button class="btn-primary" id="btn-add-wishlist">+ Tambah Keinginan</button>
+      </div>
+      <div id="wishlist-grid" class="wishlist-grid">
+        <p class="empty-state">Wishlist kamu masih kosong.</p>
+      </div>
+    </section>
+
+    <!-- ===== HALAMAN: INVENTORI ===== -->
+    <section class="page" id="page-inventory">
+      <div class="content-header">
+        <h2 class="content-title">Inventori</h2>
+      </div>
+      <div id="inventory-grid" class="inventory-grid">
+        <p class="empty-state">Inventori masih kosong. Beli dari Wishlist untuk mengisi inventori.</p>
+      </div>
+    </section>
+
+    <!-- ===== HALAMAN: PROFIL ===== -->
+    <section class="page" id="page-profil">
+      <div class="profil-layout">
+        <div class="profil-card">
+          <div class="profil-avatar-upload">
+            <div class="profil-avatar-preview" id="profil-avatar-preview">AN</div>
+            <label for="profil-photo-input" class="btn-upload">Ganti Foto</label>
+            <input type="file" id="profil-photo-input" accept="image/*" style="display:none" />
+          </div>
+
+          <div class="profil-form">
+            <div class="form-group">
+              <label>Nama Lengkap</label>
+              <input type="text" id="profil-fullname" placeholder="Nama lengkap kamu" />
+            </div>
+            <div class="form-group">
+              <label>Nama Panggilan</label>
+              <input type="text" id="profil-nickname" placeholder="Nama panggilan" />
+            </div>
+            <div class="form-group">
+              <label>Umur</label>
+              <input type="number" id="profil-age" placeholder="Umur" min="1" max="120" />
+            </div>
+            <div class="form-group">
+              <label>Tanggal Lahir</label>
+              <input type="date" id="profil-dob" />
+            </div>
+            <div class="form-group">
+              <label>Kota</label>
+              <input type="text" id="profil-city" placeholder="Kota tinggal" />
+            </div>
+            <div class="form-group">
+              <label>Deskripsi</label>
+              <textarea id="profil-desc" placeholder="Ceritakan tentang dirimu..." rows="3"></textarea>
+            </div>
+            <button class="btn-primary" id="btn-save-profil">Simpan Profil</button>
+          </div>
+        </div>
+
+        <div class="profil-stats-card">
+          <h3>Statistik Level</h3>
+          <div class="level-display">
+            <div class="level-circle" id="profil-level-circle">1</div>
+            <div>
+              <div class="level-title">Level <span id="profil-level-num">1</span></div>
+              <div class="exp-display"><span id="profil-exp">0</span> / <span id="profil-exp-max">100</span> EXP</div>
+            </div>
+          </div>
+          <div class="exp-bar-outer">
+            <div class="exp-bar-inner" id="profil-exp-bar" style="width:0%"></div>
+          </div>
+          <div class="profil-stats-grid">
+            <div class="pstat-box"><span class="pstat-val" id="ps-quest">0</span><span class="pstat-label">Quest Selesai</span></div>
+            <div class="pstat-box"><span class="pstat-val" id="ps-total-exp">0</span><span class="pstat-label">Total EXP</span></div>
+            <div class="pstat-box"><span class="pstat-val" id="ps-wishlist">0</span><span class="pstat-label">Wishlist</span></div>
+            <div class="pstat-box"><span class="pstat-val" id="ps-inventory">0</span><span class="pstat-label">Inventori</span></div>
+          </div>
+        </div>
+
+        <!-- AKUN GOOGLE & SINKRONISASI CLOUD -->
+        <div class="profil-stats-card" id="card-akun-cloud">
+          <h3>Akun &amp; Sinkronisasi</h3>
+
+          <!-- Diisi otomatis oleh supabase.js: foto, nama, email Google -->
+          <div id="auth-user-info"></div>
+
+          <div class="sync-status-row">
+            <span id="sync-status-badge" class="sync-badge offline">Offline Mode</span>
+          </div>
+
+          <div class="auth-actions" id="auth-actions-logged-in" style="display:none">
+            <button class="btn-secondary" id="btn-sync-sekarang">↻ Sinkronisasi Sekarang</button>
+            <button class="btn-danger" id="btn-logout-google">Logout</button>
+          </div>
+
+          <div class="auth-actions" id="auth-actions-logged-out">
+            <p class="setting-desc">Belum login. Data hanya tersimpan lokal di perangkat ini.</p>
+            <button class="btn-primary" id="btn-login-dari-profil">Masuk dengan Google</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== HALAMAN: STATISTIK ===== -->
+    <section class="page" id="page-statistik">
+      <div class="statistik-layout">
+        <div class="card">
+          <h3 class="card-title">Radar Kemampuan</h3>
+          <div class="radar-chart-container">
+            <canvas id="radar-chart-stat"></canvas>
+          </div>
+        </div>
+        <div class="card">
+          <h3 class="card-title">Quest Selesai per Hari</h3>
+          <canvas id="bar-chart-quest" height="160"></canvas>
+        </div>
+        <div class="card">
+          <h3 class="card-title">Keuangan Bulanan</h3>
+          <canvas id="line-chart-finance" height="160"></canvas>
+        </div>
+        <div class="card">
+          <h3 class="card-title">Distribusi Kategori Quest</h3>
+          <canvas id="pie-chart-quest" height="160"></canvas>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== HALAMAN: AKTIVITAS ===== -->
+    <section class="page" id="page-aktivitas">
+      <div class="content-header">
+        <h2 class="content-title">Log Aktivitas</h2>
+        <div class="aktivitas-filter">
+          <select id="filter-aktivitas" class="filter-select">
+            <option value="">Semua Aktivitas</option>
+            <option value="quest">Quest</option>
+            <option value="finance">Keuangan</option>
+            <option value="wishlist">Wishlist</option>
+            <option value="inventory">Inventori</option>
+            <option value="profil">Profil</option>
+            <option value="sosial">Sosial</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Sistem Sosial -->
+      <div class="card card-sosial">
+        <div class="card-header-row">
+          <h3 class="card-title">Aktivitas Sosial</h3>
+          <button class="btn-primary" id="btn-add-sosial">+ Catat Aktivitas</button>
+        </div>
+        <div id="sosial-list" class="sosial-list">
+          <p class="empty-state">Belum ada aktivitas sosial tercatat.</p>
+        </div>
+      </div>
+
+      <div id="activity-log-list" class="activity-log-list">
+        <p class="empty-state">Belum ada aktivitas tercatat.</p>
+      </div>
+    </section>
+
+    <!-- ===== HALAMAN: AI ASISTEN ===== -->
+    <section class="page" id="page-ai">
+      <div class="ai-layout">
+
+        <aside class="ai-sidebar">
+          <div class="ai-sidebar-header">
+            <h3>Riwayat Chat</h3>
+            <button class="btn-icon" id="btn-new-chat" title="Chat Baru">+</button>
+          </div>
+          <div id="ai-chat-history" class="ai-chat-history">
+            <p class="empty-state-sm">Belum ada riwayat chat.</p>
+          </div>
+        </aside>
+
+        <div class="ai-main">
+          <div class="ai-chat-header">
+            <div class="ai-avatar">AI</div>
+            <div>
+              <strong>AN Asisten</strong>
+              <span class="ai-status">Siap membantu</span>
+            </div>
+          </div>
+
+          <div id="ai-messages" class="ai-messages">
+            <div class="ai-msg assistant">
+              <div class="ai-msg-bubble">
+                Halo! Saya AN Asisten, siap membantu mengelola kehidupan dan produktivitas kamu. Tanyakan apa saja tentang quest, keuangan, target hidup, atau motivasi!
+              </div>
+            </div>
+          </div>
+
+          <div class="ai-input-area">
+            <textarea id="ai-input" class="ai-input" placeholder="Ketik pesanmu..." rows="1"></textarea>
+            <button class="btn-send" id="btn-send-ai">&#9658;</button>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ===== HALAMAN: PENGATURAN ===== -->
+    <section class="page" id="page-pengaturan">
+      <div class="pengaturan-layout">
+
+        <div class="card">
+          <h3 class="card-title">Tema Tampilan</h3>
+          <div class="theme-options">
+            <button class="btn-theme-opt active" id="btn-light-mode">☀️ Mode Terang</button>
+            <button class="btn-theme-opt" id="btn-dark-mode">🌙 Mode Gelap</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3 class="card-title">Data & Backup</h3>
+          <div class="setting-actions">
+            <button class="btn-secondary" id="btn-export">⬇️ Ekspor Data (JSON)</button>
+            <label for="import-file" class="btn-secondary">⬆️ Impor Data (JSON)</label>
+            <input type="file" id="import-file" accept=".json" style="display:none" />
+          </div>
+        </div>
+
+        <div class="card">
+          <h3 class="card-title">Reset Data</h3>
+          <p class="setting-desc">Hati-hati! Tindakan ini akan menghapus semua data secara permanen.</p>
+          <button class="btn-danger" id="btn-reset-all">🗑️ Reset Semua Data</button>
+        </div>
+
+        <div class="card">
+          <h3 class="card-title">Tentang Aplikasi</h3>
+          <p class="setting-desc"><strong>AN Progress</strong> — Personal Life Operating System</p>
+          <p class="setting-desc">Versi 1.0.0 | Dibuat untuk mengelola kehidupan nyata setiap hari.</p>
+        </div>
+
+      </div>
+    </section>
+
+  </div><!-- end .main-wrapper -->
+
+  <!-- ===== OVERLAY BACKDROP ===== -->
+  <div class="modal-backdrop hidden" id="modal-backdrop"></div>
+
+  <!-- ===== MODAL: QUEST ===== -->
+  <div class="modal hidden" id="modal-quest">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 id="modal-quest-title">Tambah Quest</h3>
+        <button class="modal-close" data-modal="modal-quest">&#10005;</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label>Judul Quest</label>
+          <input type="text" id="quest-title-input" placeholder="Judul quest..." />
+        </div>
+        <div class="form-group">
+          <label>Deskripsi</label>
+          <textarea id="quest-desc-input" placeholder="Deskripsi (opsional)..." rows="2"></textarea>
+        </div>
+        <div class="form-group">
+          <label>Kategori</label>
+          <select id="quest-cat-input">
+            <option value="pengetahuan">Pengetahuan</option>
+            <option value="kesehatan">Kesehatan</option>
+            <option value="uang">Uang</option>
+            <option value="sosial">Sosial</option>
+            <option value="lainnya">Lainnya</option>
+          </select>
+        </div>
+        <div class="form-group" id="quest-day-group">
+          <label>Hari</label>
+          <select id="quest-day-input">
+            <option value="senin">Senin</option>
+            <option value="selasa">Selasa</option>
+            <option value="rabu">Rabu</option>
+            <option value="kamis">Kamis</option>
+            <option value="jumat">Jumat</option>
+            <option value="sabtu">Sabtu</option>
+            <option value="minggu">Minggu</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>EXP</label>
+          <input type="number" id="quest-exp-input" placeholder="10" min="1" max="9999" value="10" />
+        </div>
+        <input type="hidden" id="quest-id-input" />
+        <input type="hidden" id="quest-type-input" value="today" />
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" data-modal="modal-quest">Batal</button>
+        <button class="btn-primary" id="btn-save-quest">Simpan</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== MODAL: AKUN KEUANGAN ===== -->
+  <div class="modal hidden" id="modal-account">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 id="modal-account-title">Tambah Akun</h3>
+        <button class="modal-close" data-modal="modal-account">&#10005;</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label>Nama Akun</label>
+          <input type="text" id="account-name-input" placeholder="Nama akun..." />
+        </div>
+        <div class="form-group">
+          <label>Emoji / Ikon</label>
+          <input type="text" id="account-icon-input" placeholder="💰" maxlength="4" />
+        </div>
+        <div class="form-group">
+          <label>Saldo Awal (Rp)</label>
+          <input type="number" id="account-balance-input" placeholder="0" min="0" />
+        </div>
+        <input type="hidden" id="account-id-input" />
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" data-modal="modal-account">Batal</button>
+        <button class="btn-primary" id="btn-save-account">Simpan</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== MODAL: TRANSAKSI ===== -->
+  <div class="modal hidden" id="modal-transaction">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 id="modal-transaction-title">Tambah Transaksi</h3>
+        <button class="modal-close" data-modal="modal-transaction">&#10005;</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label>Tipe</label>
+          <select id="tx-type-input">
+            <option value="pemasukan">Pemasukan</option>
+            <option value="pengeluaran">Pengeluaran</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Nominal (Rp)</label>
+          <input type="number" id="tx-amount-input" placeholder="0" min="0" />
+        </div>
+        <div class="form-group">
+          <label>Kategori</label>
+          <input type="text" id="tx-cat-input" placeholder="Makan, Transportasi, Gaji, dll." />
+        </div>
+        <div class="form-group">
+          <label>Akun</label>
+          <select id="tx-account-input">
+            <!-- diisi JS -->
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Tanggal</label>
+          <input type="date" id="tx-date-input" />
+        </div>
+        <div class="form-group">
+          <label>Catatan (opsional)</label>
+          <input type="text" id="tx-note-input" placeholder="Catatan..." />
+        </div>
+        <input type="hidden" id="tx-id-input" />
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" data-modal="modal-transaction">Batal</button>
+        <button class="btn-primary" id="btn-save-transaction">Simpan</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== MODAL: WISHLIST ===== -->
+  <div class="modal hidden" id="modal-wishlist">
+    <div class="modal-box modal-box-wishlist">
+      <div class="modal-header">
+        <h3 id="modal-wishlist-title">Tambah Wishlist</h3>
+        <button class="modal-close" data-modal="modal-wishlist">&#10005;</button>
+      </div>
+      <div class="modal-body">
+
+        <!-- UPLOAD FOTO -->
+        <div class="form-group">
+          <label>Foto Barang</label>
+          <div class="wishlist-upload-area" id="wishlist-drop-zone">
+            <!-- Preview gambar -->
+            <div class="wishlist-upload-preview" id="wishlist-upload-preview">
+              <div class="wishlist-upload-placeholder" id="wishlist-upload-placeholder">
+                <span class="upload-icon">📷</span>
+                <span class="upload-text">Klik atau seret foto ke sini</span>
+                <span class="upload-subtext">JPG, PNG, WEBP · Maks 5MB</span>
+              </div>
+              <img id="wishlist-img-preview" src="" alt="Preview" class="hidden" />
+            </div>
+            <!-- Tombol aksi foto -->
+            <div class="wishlist-upload-actions">
+              <label for="wishlist-file-input" class="btn-upload-photo">
+                📁 Pilih Foto
+              </label>
+              <button type="button" class="btn-upload-remove hidden" id="btn-remove-wishlist-img">
+                ✕ Hapus Foto
+              </button>
+            </div>
+            <input type="file" id="wishlist-file-input" accept="image/*" style="display:none" />
+          </div>
+          <!-- Simpan base64 hasil konversi -->
+          <input type="hidden" id="wishlist-img-data" />
+        </div>
+
+        <div class="form-group">
+          <label>Nama Barang</label>
+          <input type="text" id="wishlist-name-input" placeholder="Nama barang yang kamu inginkan..." />
+        </div>
+        <div class="form-group">
+          <label>Spesifikasi</label>
+          <textarea id="wishlist-spec-input" placeholder="Warna, ukuran, model, atau catatan lainnya..." rows="2"></textarea>
+        </div>
+        <div class="form-group">
+          <label>Harga (Rp)</label>
+          <input type="number" id="wishlist-price-input" placeholder="0" min="0" />
+        </div>
+        <input type="hidden" id="wishlist-id-input" />
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" data-modal="modal-wishlist">Batal</button>
+        <button class="btn-primary" id="btn-save-wishlist">Simpan ke Wishlist</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== MODAL: BELI DARI WISHLIST ===== -->
+  <div class="modal hidden" id="modal-buy-wishlist">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3>Konfirmasi Pembelian</h3>
+        <button class="modal-close" data-modal="modal-buy-wishlist">&#10005;</button>
+      </div>
+      <div class="modal-body">
+        <p id="buy-confirm-text"></p>
+        <div class="form-group">
+          <label>Sumber Pembayaran</label>
+          <select id="buy-account-select">
+            <!-- diisi JS -->
+          </select>
+        </div>
+        <input type="hidden" id="buy-wishlist-id" />
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" data-modal="modal-buy-wishlist">Batal</button>
+        <button class="btn-primary" id="btn-confirm-buy">Beli Sekarang</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== MODAL: TARGET TABUNGAN ===== -->
+  <div class="modal hidden" id="modal-saving">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 id="modal-saving-title">Tambah Target Tabungan</h3>
+        <button class="modal-close" data-modal="modal-saving">&#10005;</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label>Nama Target</label>
+          <input type="text" id="saving-name-input" placeholder="Nama target..." />
+        </div>
+        <div class="form-group">
+          <label>Target (Rp)</label>
+          <input type="number" id="saving-target-input" placeholder="0" min="0" />
+        </div>
+        <div class="form-group">
+          <label>Terkumpul (Rp)</label>
+          <input type="number" id="saving-progress-input" placeholder="0" min="0" />
+        </div>
+        <div class="form-group">
+          <label>Deadline</label>
+          <input type="date" id="saving-deadline-input" />
+        </div>
+        <input type="hidden" id="saving-id-input" />
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" data-modal="modal-saving">Batal</button>
+        <button class="btn-primary" id="btn-save-saving">Simpan</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== MODAL: TARGET HIDUP ===== -->
+  <div class="modal hidden" id="modal-goal">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 id="modal-goal-title">Tambah Target Hidup</h3>
+        <button class="modal-close" data-modal="modal-goal">&#10005;</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label>Judul Target</label>
+          <input type="text" id="goal-title-input" placeholder="Target hidup kamu..." />
+        </div>
+        <div class="form-group">
+          <label>Kategori</label>
+          <select id="goal-cat-input">
+            <option value="jangka-pendek">Jangka Pendek</option>
+            <option value="jangka-menengah">Jangka Menengah</option>
+            <option value="jangka-panjang">Jangka Panjang</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Deskripsi</label>
+          <textarea id="goal-desc-input" placeholder="Jelaskan target ini..." rows="2"></textarea>
+        </div>
+        <input type="hidden" id="goal-id-input" />
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" data-modal="modal-goal">Batal</button>
+        <button class="btn-primary" id="btn-save-goal">Simpan</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== MODAL: AKTIVITAS SOSIAL ===== -->
+  <div class="modal hidden" id="modal-sosial">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3>Catat Aktivitas Sosial</h3>
+        <button class="modal-close" data-modal="modal-sosial">&#10005;</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label>Jenis Aktivitas</label>
+          <select id="sosial-type-input">
+            <option value="donasi">Donasi</option>
+            <option value="amal">Amal</option>
+            <option value="relawan">Relawan</option>
+            <option value="membantu">Membantu Orang</option>
+            <option value="organisasi">Organisasi</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Deskripsi</label>
+          <input type="text" id="sosial-desc-input" placeholder="Ceritakan aktivitas sosialmu..." />
+        </div>
+        <div class="form-group">
+          <label>Tanggal</label>
+          <input type="date" id="sosial-date-input" />
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" data-modal="modal-sosial">Batal</button>
+        <button class="btn-primary" id="btn-save-sosial">Simpan</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== MODAL: KONFIRMASI HAPUS ===== -->
+  <div class="modal hidden" id="modal-confirm">
+    <div class="modal-box modal-box-sm">
+      <div class="modal-header">
+        <h3>Konfirmasi</h3>
+        <button class="modal-close" data-modal="modal-confirm">&#10005;</button>
+      </div>
+      <div class="modal-body">
+        <p id="confirm-text">Apakah kamu yakin?</p>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" data-modal="modal-confirm">Batal</button>
+        <button class="btn-danger" id="btn-confirm-action">Ya, Hapus</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== TOAST NOTIFIKASI ===== -->
+  <div id="toast-container" class="toast-container"></div>
+
+  <script src="supabase.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>
