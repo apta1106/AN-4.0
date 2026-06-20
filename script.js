@@ -43,7 +43,17 @@ const expForLevel = lvl => lvl * 100;
 
 /* ===== SIMPAN & MUAT DATA ===== */
 function simpanData() {
-  try { localStorage.setItem('an_progress_data', JSON.stringify(APP)); } catch(e) { console.error('Gagal simpan:', e); }
+  try {
+    localStorage.setItem('an_progress_data', JSON.stringify(APP));
+    // PATCH Bug #2: Trigger cloud sync langsung dari sini
+    // Lebih reliable daripada patch window.simpanData dari supabase.js
+    // karena panggilan ini ada di lexical scope yang sama
+    if (window.ANSupabase?.syncSetelahPerubahan) {
+      window.ANSupabase.syncSetelahPerubahan();
+    }
+  } catch(e) {
+    console.error('Gagal simpan:', e);
+  }
 }
 function muatData() {
   try {
@@ -1345,10 +1355,29 @@ function imporData(file) {
    RESET DATA
    =================================================== */
 function resetData() {
-  konfirmasi('RESET SEMUA DATA? Tindakan ini tidak bisa dibatalkan!', () => {
+  // PATCH Bug #3: Gunakan window.confirm() native agar tidak terblokir
+  // oleh login-overlay Supabase yang z-index-nya lebih tinggi dari modal custom
+  const pesan = 'RESET SEMUA DATA?\n\nSemua quest, transaksi, wishlist, inventori, dan profil akan dihapus permanen.\n\nTindakan ini TIDAK BISA dibatalkan!';
+  const yakin = window.confirm(pesan);
+  if (!yakin) return;
+
+  // PATCH (poin 8): jika user sedang login, hapus juga data di cloud.
+  // Sebelumnya hanya localStorage yang dihapus, sehingga begitu halaman
+  // reload, muatDataDariCloud() menarik ulang data lama dari cloud dan
+  // membuat reset terlihat "tidak bekerja".
+  const lanjutkanReset = () => {
     localStorage.removeItem('an_progress_data');
+    localStorage.removeItem('an_progress_data_lokal_backup');
     location.reload();
-  });
+  };
+
+  if (window.ANSupabase?.isLoggedIn?.() && window.ANSupabase?.hapusSemuaDataCloud) {
+    window.ANSupabase.hapusSemuaDataCloud()
+      .catch(err => console.error('[Reset][DEBUG] Gagal menghapus data cloud, tetap reset lokal:', err))
+      .finally(lanjutkanReset);
+  } else {
+    lanjutkanReset();
+  }
 }
 
 /* ===================================================
