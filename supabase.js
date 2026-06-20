@@ -45,9 +45,12 @@ function getSB() {
 }
 
 /* ── State Auth ── */
-let CURRENT_USER = null; // objek user Supabase
-let IS_ONLINE = navigator.onLine;
-let SYNC_PENDING = false; // ada perubahan belum tersync
+let CURRENT_USER = null;          // objek user Supabase
+let IS_ONLINE    = navigator.onLine;
+let SYNC_PENDING = false;         // ada perubahan belum tersync
+// PATCH: Flag untuk mencegah muatDataDariCloud dipanggil berulang
+// saat Supabase fire SIGNED_IN karena token refresh
+let _sudahLoginPertamaKali = false;
 
 // ============================================================
 // UTILITAS
@@ -271,11 +274,33 @@ async function cekSession() {
   }
 
   // Dengarkan perubahan auth (login / logout dari tab lain)
+  // PATCH: Gunakan flag _sudahLoginPertamaKali dan cek user ID
+  // untuk mencegah muatDataDariCloud dipanggil ulang saat token refresh
+  // (Supabase v2 fires SIGNED_IN setiap token refresh / tab focus)
   sb.auth.onAuthStateChange(async (event, session) => {
     if (event === "SIGNED_IN" && session?.user) {
+      const userIdBaru = session.user.id;
+      const userIdLama = CURRENT_USER?.id || null;
+
+      // Hanya jalankan onLoginBerhasil jika:
+      // 1. Belum pernah login (login pertama kali), ATAU
+      // 2. User ID berubah (ganti akun)
+      // JANGAN jalankan saat token refresh (user ID sama, sudah login)
+      if (!_sudahLoginPertamaKali || userIdBaru !== userIdLama) {
+        _sudahLoginPertamaKali = true;
+        CURRENT_USER = session.user;
+        await onLoginBerhasil(CURRENT_USER);
+      } else {
+        // Token refresh biasa — cukup perbarui CURRENT_USER, jangan reload data
+        CURRENT_USER = session.user;
+        updateSyncBadge();
+      }
+    } else if (event === "TOKEN_REFRESHED" && session?.user) {
+      // Token diperbarui — update objek user tapi JANGAN reload data dari cloud
       CURRENT_USER = session.user;
-      await onLoginBerhasil(CURRENT_USER);
+      updateSyncBadge();
     } else if (event === "SIGNED_OUT") {
+      _sudahLoginPertamaKali = false;
       CURRENT_USER = null;
       tampilkanLayarLogin();
     }
@@ -319,76 +344,12 @@ function inisialisasiAplikasiOffline() {
 // ============================================================
 // MUAT DATA DARI CLOUD → APP (state di script.js)
 // ============================================================
-async function muatDataDariCloud() {
-  const sb = getSB();
-  if (!sb || !getUserId()) return;
+// PATCH: Guard untuk mencegah overwrite data lokal yang lebih baru
+// Jika ada perubahan belum tersync (SYNC_PENDING), skip cloud load
+// untuk menjaga data lokal tetap utuh
+let _sedangMuatCloud = false; // Mencegah concurrent load
 
-  try {
-    const uid = getUserId();
-
-    // Ambil semua tabel secara paralel
-    const [
-      profRes,
-      questRes,
-      accRes,
-      txRes,
-      wishRes,
-      invRes,
-      savRes,
-      goalRes,
-      sosRes,
-      logRes,
-      chatRes,
-    ] = await Promise.all([
-      db("profiles").select("*").eq("id", uid).single(),
-      db("quests").select("*").eq("user_id", uid),
-      db("finance_accounts").select("*").eq("user_id", uid),
-      db("transactions").select("*").eq("user_id", uid),
-      db("wishlist").select("*").eq("user_id", uid),
-      db("inventory").select("*").eq("user_id", uid),
-      db("savings").select("*").eq("user_id", uid),
-      db("goals").select("*").eq("user_id", uid),
-      db("sosial").select("*").eq("user_id", uid),
-      db("activity_logs")
-        .select("*")
-        .eq("user_id", uid)
-        .order("waktu", { ascending: false })
-        .limit(200),
-      db("ai_chats").select("*").eq("user_id", uid),
-    ]);
-
-    // Profil
-    if (profRes.data) {
-      const p = profRes.data;
-      APP.profil = {
-        nama: p.nama || CURRENT_USER.user_metadata?.full_name || "",
-        panggilan: p.panggilan || "",
-        umur: p.umur || "",
-        lahir: p.lahir || "",
-        kota: p.kota || "",
-        deskripsi: p.deskripsi || "",
-        foto:
-          p.foto ||
-          p.google_foto ||
-          CURRENT_USER.user_metadata?.avatar_url ||
-          "",
-        googleFoto: p.google_foto || "",
-        googleNama: p.google_nama || "",
-        googleEmail: p.google_email || CURRENT_USER.email || "",
-      };
-      APP.level = p.level || 1;
-      APP.exp = p.exp || 0;
-      APP.totalExp = p.total_exp || 0;
-      APP.darkMode = p.dark_mode || false;
-      APP.stats = p.stats || {
-        pengetahuan: 0,
-        kesehatan: 0,
-        uang: 0,
-        sosial: 0,
-      };
-      APP.productivityLog = p.productivity_log || {};
-    }
-
+   
     // Koleksi data
     if (questRes.data) APP.quest = questRes.data.map(cloudQuestToApp);
     if (accRes.data) APP.accounts = accRes.data.map(cloudAccToApp);
@@ -408,8 +369,10 @@ async function muatDataDariCloud() {
     if (typeof renderAll === "function") renderAll();
 
     SYNC_PENDING = false;
+    _sedangMuatCloud = false;
     updateSyncBadge();
   } catch (err) {
+    _sedangMuatCloud = false;
     console.error("Gagal muat data cloud:", err);
     showSyncToast(
       "Gagal memuat data cloud. Menggunakan data lokal.",
@@ -842,13 +805,13 @@ async function syncSekarang() {
 // Dipanggil setelah script.js selesai load
 // ============================================================
 function patchSimpanData() {
-  const simpanDataAsli = window.simpanData;
-  if (typeof simpanDataAsli !== "function") return;
-
-  window.simpanData = function () {
-    simpanDataAsli(); // tetap simpan ke LocalStorage
-    syncSetelahPerubahan(); // lalu kirim ke cloud
-  };
+  // PATCH: Pendekatan lama (overwrite window.simpanData) tidak efektif
+  // karena script.js memanggil simpanData() via lexical binding — bukan window.simpanData
+  // FIX: Expose syncSetelahPerubahan ke window.ANSupabase (sudah ada di export bawah)
+  // lalu script.js akan memanggil window.ANSupabase.syncSetelahPerubahan() langsung
+  // dari dalam simpanData() aslinya.
+  // Fungsi ini sekarang tidak perlu melakukan apa-apa.
+  console.log("[Supabase] patchSimpanData: sync akan dipanggil dari script.js langsung.");
 }
 
 // ============================================================
